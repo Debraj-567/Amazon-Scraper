@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amazon Intelligence Scraper Pro | Real-Time E-Commerce Engine</title>
+  <meta name="description" content="Advanced Amazon scraper web dashboard with natural language budget parsing, in-stock filtering, and live data visualization.">
+  
+  <!-- Modern Typography from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <path d="M11 8v6"></path>
+            <path d="M8 11h6"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title">
+            <span class="gradient-text">Amazon</span> Pro Scraper
+            <span class="version-tag">v2.0 Advanced</span>
+          </div>
+          <div class="brand-subtitle">Smart Natural Budget Parser & In-Stock Verified Engine</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="status-indicator ready" id="global-status-pill">
+          <span class="pulse-dot"></span>
+          <span id="global-status-text">Engine Ready</span>
+        </div>
+        <button class="nav-tab active" id="tab-btn-scraper">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+          Live Scraper
+        </button>
+        <button class="nav-tab" id="tab-btn-history">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          Saved Data (<span id="history-count-badge">0</span>)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- SCRAPER VIEW -->
+    <section id="scraper-view" class="view-panel active">
+      
+      <!-- HERO SEARCH & PROMPT CONTROL -->
+      <div class="hero-control-card glass-panel">
+        <div class="hero-header">
+          <h2>Find Products with Exact Budget & Real-Time Availability</h2>
+          <p>Type in natural language like <span class="highlight-code">"phones under 25k"</span>, <span class="highlight-code">"laptops under 50k"</span>, or choose a preset.</p>
+        </div>
+
+        <form id="scrape-form" class="search-form">
+          <div class="input-glow-wrapper">
+            <div class="search-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <input 
+              type="text" 
+              id="search-input" 
+              class="search-input" 
+              placeholder="Search any brand or model (e.g. AI+ Pulse 2, Samsung, OnePlus, iPhone, Redmi, phones under 25k...)" 
+              value="AI+ Pulse 2"
+              required 
+              autocomplete="off"
+            />
+            <button type="submit" id="start-btn" class="cta-button primary-glow">
+              <span class="btn-icon">⚡</span>
+              <span class="btn-text">Scrape Amazon</span>
+            </button>
+          </div>
+
+          <!-- Dynamic Budget Detection Pill -->
+          <div id="detected-pill-box" class="detected-box">
+            <span class="detect-label">Auto-Detected Filter:</span>
+            <span class="detect-badge" id="detected-badge">Target: AI+ Pulse 2 • All Available Models • Verified Sellers</span>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="presets-row">
+            <span class="presets-title">Brand & Model Presets:</span>
+            <button type="button" class="preset-pill active" data-query="AI+ Pulse 2">⚡ AI+ Pulse 2 (All Models)</button>
+            <button type="button" class="preset-pill" data-query="Samsung">📱 Samsung (All Models)</button>
+            <button type="button" class="preset-pill" data-query="OnePlus">🔴 OnePlus (All Models)</button>
+            <button type="button" class="preset-pill" data-query="iPhone">🍎 Apple iPhone</button>
+            <button type="button" class="preset-pill" data-query="Redmi">🔥 Redmi Series</button>
+            <button type="button" class="preset-pill" data-query="Realme">⚡ Realme Series</button>
+            <button type="button" class="preset-pill" data-query="phones under 25k">💰 Phones Under 25k</button>
+          </div>
+
+          <!-- Advanced Filters Accordion -->
+          <div class="filters-toggle-row">
+            <button type="button" id="toggle-filters-btn" class="text-toggle-btn">
+              <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              <span>Fine-Tune Filters & Chrome Options</span>
+            </button>
+          </div>
+
+          <div id="advanced-filters" class="advanced-filters-panel hidden">
+            <div class="filter-grid">
+              <div class="filter-item">
+                <label for="filter-min-price">Min Price (₹)</label>
+                <input type="number" id="filter-min-price" placeholder="0" min="0" step="500">
+              </div>
+              <div class="filter-item">
+                <label for="filter-max-price">Max Price (₹)</label>
+                <input type="number" id="filter-max-price" placeholder="25000" min="0" step="500" value="25000">
+              </div>
+              <div class="filter-item">
+                <label for="filter-pages">Pages to Scrape</label>
+                <select id="filter-pages">
+                  <option value="1" selected>1 Page (~16 to 24 products)</option>
+                  <option value="2">2 Pages (~32 to 48 products)</option>
+                  <option value="3">3 Pages (~50+ products)</option>
+                </select>
+              </div>
+              <div class="filter-item">
+                <label for="filter-rating">Min Rating</label>
+                <select id="filter-rating">
+                  <option value="" selected>Any Rating</option>
+                  <option value="3.5">3.5 ★ & above</option>
+                  <option value="4.0">4.0 ★ & above (Recommended)</option>
+                  <option value="4.5">4.5 ★ & above</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="switches-row">
+              <label class="toggle-switch-label">
+                <input type="checkbox" id="filter-deep-scan" checked>
+                <span class="toggle-slider"></span>
+                <span class="switch-text"><strong>⚡ Deep Multi-Catalog Scan</strong> (Guarantees AI+ Pulse 2, OnePlus, Samsung, Redmi, Moto, Realme, iQOO)</span>
+              </label>
+
+              <label class="toggle-switch-label">
+                <input type="checkbox" id="filter-in-stock" checked>
+                <span class="toggle-slider"></span>
+                <span class="switch-text"><strong>Strict In-Stock Only</strong> (Excludes "Currently unavailable" & out-of-stock items)</span>
+              </label>
+
+              <label class="toggle-switch-label">
+                <input type="checkbox" id="filter-prime">
+                <span class="toggle-slider"></span>
+                <span class="switch-text">Prime Delivery Only</span>
+              </label>
+
+              <label class="toggle-switch-label">
+                <input type="checkbox" id="filter-headless" checked>
+                <span class="toggle-slider"></span>
+                <span class="switch-text">Headless Browser (Fast background execution)</span>
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- PROGRESS & LIVE STATUS (shown while scraping) -->
+      <div id="live-progress-card" class="glass-panel progress-card hidden">
+        <div class="progress-header">
+          <div class="progress-title">
+            <span class="spinner-icon"></span>
+            <span id="progress-stage-text">Scraping Amazon India in real-time...</span>
+          </div>
+          <span class="progress-percent" id="progress-percent-text">15%</span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-fill" style="width: 15%"></div>
+        </div>
+        <div class="progress-subtext" id="progress-subtext">Initializing stealth Chrome instance with anti-detection profile...</div>
+        
+        <!-- Live Log Console Drawer -->
+        <details class="logs-details">
+          <summary>View Real-Time Terminal Logs</summary>
+          <div class="terminal-logs-window" id="terminal-logs-window">
+            <div class="log-line">[00:00:00] Initializing scraper environment...</div>
+          </div>
+        </details>
+      </div>
+
+      <!-- METRICS BANNER -->
+      <div id="metrics-card" class="metrics-grid hidden">
+        <div class="metric-card glass-panel">
+          <div class="metric-label">In-Stock Products Found</div>
+          <div class="metric-val text-emerald" id="stat-in-stock">0</div>
+          <div class="metric-sub">Strictly verified available</div>
+        </div>
+        <div class="metric-card glass-panel">
+          <div class="metric-label">Lowest Price</div>
+          <div class="metric-val text-amber" id="stat-lowest-price">₹0</div>
+          <div class="metric-sub">In selected budget</div>
+        </div>
+        <div class="metric-card glass-panel">
+          <div class="metric-label">Average Price</div>
+          <div class="metric-val text-cyan" id="stat-avg-price">₹0</div>
+          <div class="metric-sub">Across in-stock models</div>
+        </div>
+        <div class="metric-card glass-panel">
+          <div class="metric-label">Max Discount</div>
+          <div class="metric-val text-purple" id="stat-max-discount">0%</div>
+          <div class="metric-sub">Off original MRP</div>
+        </div>
+      </div>
+
+      <!-- RESULTS TOOLBAR -->
+      <div id="results-toolbar" class="results-toolbar hidden">
+        <div class="toolbar-left">
+          <h3 id="results-heading">Scraped Products (<span id="results-count">0</span>)</h3>
+          <span class="budget-badge" id="active-budget-pill">Budget: Under ₹25,000</span>
+        </div>
+
+        <div class="toolbar-right">
+          <div class="sort-control">
+            <label for="sort-select">Sort:</label>
+            <select id="sort-select">
+              <option value="relevance">Relevance</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+              <option value="discount-desc">Highest Discount %</option>
+              <option value="rating-desc">Top Rated</option>
+            </select>
+          </div>
+
+          <div class="view-toggle">
+            <button id="view-mode-grid" class="view-btn active" title="Grid View">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            </button>
+            <button id="view-mode-table" class="view-btn" title="Table View">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+          </div>
+
+          <div class="export-actions">
+            <button id="export-csv-btn" class="btn secondary-btn" title="Export to CSV">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              CSV
+            </button>
+            <button id="export-json-btn" class="btn secondary-btn" title="Export to JSON">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              JSON
+            </button>
+          </div>
+        </div>
+      <!-- BRAND FILTER CHIPS (Dynamic) -->
+      <div id="brand-filters-container" class="brand-filters-bar hidden">
+        <span class="brand-filter-title">Filter by Brand:</span>
+        <div id="brand-chips-list" class="brand-chips-list"></div>
+      </div>
+
+      <!-- RESULTS CONTAINER (GRID OR TABLE) -->
+      <div id="products-container" class="products-grid">
+        <!-- Injected via JavaScript -->
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div id="empty-state" class="empty-state glass-panel">
+        <div class="empty-icon">🔍</div>
+        <h3>Ready to Scrape Amazon</h3>
+        <p>Enter your search above (e.g. <strong>"phones under 25k"</strong>) and click <strong>"Scrape Amazon"</strong>.<br>Out-of-stock items will be filtered out automatically!</p>
+      </div>
+
+    </section>
+
+    <!-- SAVED HISTORY VIEW -->
+    <section id="history-view" class="view-panel">
+      <div class="glass-panel history-header-card">
+        <div class="history-title-row">
+          <div>
+            <h2>Persistent Scraped Products Database</h2>
+            <p>All previously saved items from <span class="highlight-code">scraped_data/amazon_products.csv</span></p>
+          </div>
+          <button id="refresh-history-btn" class="btn secondary-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            Refresh Database
+          </button>
+        </div>
+
+        <div class="history-search-row">
+          <input type="text" id="history-filter-input" class="search-input" placeholder="Filter history by brand, title, ASIN or price...">
+        </div>
+      </div>
+
+      <div class="table-responsive glass-panel history-table-wrapper">
+        <table class="data-table" id="history-table">
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Product Title</th>
+              <th>ASIN</th>
+              <th>Price</th>
+              <th>MRP</th>
+              <th>Discount</th>
+              <th>Rating</th>
+              <th>Seller</th>
+              <th>Stock Status</th>
+              <th>Link</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            <!-- Injected via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Script -->
+  <script src="app.js"></script>
+</body>
+</html>

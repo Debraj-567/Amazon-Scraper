@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+amazon_profiles/
+scraped_data/
+cookies.txt
+scratch_*.py
+test_*.py
+debug_*.py
+.system_generated/
