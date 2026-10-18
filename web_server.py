@@ -380,13 +380,15 @@ def test_parse_query():
     return jsonify(parse_natural_query(q))
 
 
-def run_server(port: int = 5050):
+def run_server(port: Optional[int] = None):
+    port = port or int(os.environ.get("PORT", 5050))
+    host = os.environ.get("HOST", "0.0.0.0")
     print(f"\n=======================================================")
     print(f"  AMAZON INTELLIGENCE SCRAPER - PRO WEB DASHBOARD")
-    print(f"  Live at: http://127.0.0.1:{port}")
+    print(f"  Live at: http://{host}:{port}")
     print(f"=======================================================\n")
-    app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
+    app.run(host=host, port=port, debug=False, use_reloader=False)
 
 
 if __name__ == "__main__":
-    run_server(5050)
+    run_server()
