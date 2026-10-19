@@ -301,7 +301,14 @@ def get_status():
 @app.route("/scrape", methods=["POST"])
 def start_scrape():
     global current_job
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True, force=True) or {}
+    if not data and request.data:
+        try:
+            data = json.loads(request.data.decode("utf-8", errors="ignore"))
+        except Exception:
+            pass
+    if not data and request.form:
+        data = request.form.to_dict()
     query = data.get("query", "").strip()
     if not query:
         return jsonify({"success": False, "error": "Search query cannot be empty."}), 400
