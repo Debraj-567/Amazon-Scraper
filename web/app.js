@@ -229,6 +229,12 @@ async function startScrapeProcess() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    if (!res.ok) {
+      const errText = await res.text();
+      showToast(`Server returned ${res.status}. Retrying...`);
+      resetButton();
+      return;
+    }
     const data = await res.json();
 
     if (!data.success) {

@@ -1107,30 +1107,43 @@ class AmazonScraper:
             for attempt in range(2):
                 try:
                     html = subprocess.check_output(cmd, timeout=5).decode("utf-8", errors="ignore")
-                    if 'data-component-type="s-search-result"' in html or len(html) > 20000:
-                        soup = BeautifulSoup(html, "html.parser")
-                        items = soup.select("div[data-component-type='s-search-result']") or soup.select(".s-result-item[data-asin]")
-                        page_items = []
-                        for it in items:
-                            p_data = self._parse_search_item_node(
-                                it,
-                                query=query,
-                                target_brand=target_brand,
-                                target_model=target_model,
-                                is_phone_query=is_phone_query,
-                                in_stock_only=in_stock_only,
-                                min_price=min_price,
-                                max_price=max_price,
-                                prime_only=prime_only,
-                                min_rating=min_rating,
-                            )
-                            if p_data:
-                                page_items.append(p_data)
-                        return page_items
-                    elif "bm-verify" in html:
-                        ensure_amazon_cookies()
                 except Exception:
-                    pass
+                    try:
+                        import urllib.request
+                        req = urllib.request.Request(
+                            u,
+                            headers={
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                                "Accept-Language": "en-US,en;q=0.9",
+                            }
+                        )
+                        with urllib.request.urlopen(req, timeout=5) as resp:
+                            html = resp.read().decode("utf-8", errors="ignore")
+                    except Exception:
+                        html = ""
+
+                if html and ('data-component-type="s-search-result"' in html or len(html) > 20000):
+                    soup = BeautifulSoup(html, "html.parser")
+                    items = soup.select("div[data-component-type='s-search-result']") or soup.select(".s-result-item[data-asin]")
+                    page_items = []
+                    for it in items:
+                        p_data = self._parse_search_item_node(
+                            it,
+                            query=query,
+                            target_brand=target_brand,
+                            target_model=target_model,
+                            is_phone_query=is_phone_query,
+                            in_stock_only=in_stock_only,
+                            min_price=min_price,
+                            max_price=max_price,
+                            prime_only=prime_only,
+                            min_rating=min_rating,
+                        )
+                        if p_data:
+                            page_items.append(p_data)
+                    return page_items
+                elif "bm-verify" in html:
+                    ensure_amazon_cookies()
                 time.sleep(0.1)
             return []
 

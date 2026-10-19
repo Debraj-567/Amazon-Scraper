@@ -11,9 +11,14 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+except ImportError:
+    webdriver = None
+    Options = None
+    Service = None
 
 BASE_DIR = Path(__file__).resolve().parent
 CHROME_BINARY = os.environ.get("CHROME_BINARY")

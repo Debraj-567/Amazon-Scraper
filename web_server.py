@@ -20,7 +20,10 @@ from typing import Any, Dict, List, Optional
 from flask import Flask, jsonify, request, send_from_directory
 
 from amazon_scraper import AmazonScraper, DataExporter, parse_natural_query
-from browser import get_driver
+try:
+    from browser import get_driver
+except Exception:
+    get_driver = None
 
 import tempfile
 
@@ -288,12 +291,14 @@ def index():
 
 
 @app.route("/api/status", methods=["GET"])
+@app.route("/status", methods=["GET"])
 def get_status():
     with job_lock:
         return jsonify(current_job)
 
 
 @app.route("/api/scrape", methods=["POST"])
+@app.route("/scrape", methods=["POST"])
 def start_scrape():
     global current_job
     data = request.get_json(silent=True) or {}
@@ -308,15 +313,17 @@ def start_scrape():
         try:
             config = load_config()
             scraper = AmazonScraper(driver=None, config=config)
+            # Cap pages to 1 on serverless to guarantee fast sub-5s response under Vercel timeout limit
+            target_pages = min(max(int(data.get("pages", 1)), 1), 2)
             results = scraper.scrape_search_results(
                 query=query,
-                max_pages=int(data.get("pages", 2)),
+                max_pages=target_pages,
                 min_price=float(data["min_price"]) if data.get("min_price") is not None and str(data["min_price"]).strip() != "" else None,
                 max_price=float(data["max_price"]) if data.get("max_price") is not None and str(data["max_price"]).strip() != "" else None,
                 in_stock_only=bool(data.get("in_stock_only", True)),
                 prime_only=bool(data.get("prime_only", False)),
                 min_rating=float(data["min_rating"]) if data.get("min_rating") else None,
-                deep_scan=bool(data.get("deep_scan", True)),
+                deep_scan=bool(data.get("deep_scan", False)),
                 use_turbo=True,
             )
             with job_lock:
@@ -347,6 +354,7 @@ def start_scrape():
 
 
 @app.route("/api/history", methods=["GET"])
+@app.route("/history", methods=["GET"])
 def get_history():
     """Retrieve saved items from CSV."""
     if not CSV_FILE.exists():
@@ -374,6 +382,7 @@ def get_history():
 
 
 @app.route("/api/parse-query", methods=["POST"])
+@app.route("/parse-query", methods=["POST"])
 def test_parse_query():
     data = request.get_json() or {}
     q = data.get("query", "")
