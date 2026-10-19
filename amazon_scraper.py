@@ -80,8 +80,49 @@ def parse_price(price_str: Optional[str]) -> Optional[float]:
 POPULAR_PHONE_BRANDS = [
     "AI+", "Apple", "Samsung", "OnePlus", "Xiaomi", "Redmi", "Realme", "iQOO", "Vivo",
     "Oppo", "Motorola", "Poco", "Nothing", "CMF", "Google", "Pixel", "Infinix", "Tecno",
-    "Lava", "Sony", "Honor", "Nokia", "Asus", "HP", "Dell", "Lenovo", "Acer", "Boat", "Noise"
+    "Lava", "Itel", "Jio", "Micromax", "IKALL", "Karbonn", "Honor", "Nokia", "HMD", "Asus", "Sony"
 ]
+
+BRAND_ALIASES = {
+    "techno": "Tecno",
+    "tecno": "Tecno",
+    "ipone": "Apple",
+    "ihpone": "Apple",
+    "iphone": "Apple",
+    "apple": "Apple",
+    "samsng": "Samsung",
+    "sumsung": "Samsung",
+    "galaxy": "Samsung",
+    "one plus": "OnePlus",
+    "1plus": "OnePlus",
+    "oneplus": "OnePlus",
+    "readmi": "Redmi",
+    "redme": "Redmi",
+    "redmi": "Redmi",
+    "xiaomi": "Xiaomi",
+    "relme": "Realme",
+    "real me": "Realme",
+    "realme": "Realme",
+    "narzo": "Realme",
+    "noting": "Nothing",
+    "nothing": "Nothing",
+    "cmf": "CMF",
+    "motrola": "Motorola",
+    "moto": "Motorola",
+    "motorola": "Motorola",
+    "iqo": "iQOO",
+    "iqoo": "iQOO",
+    "infinx": "Infinix",
+    "infinix": "Infinix",
+    "poco": "Poco",
+    "lava": "Lava",
+    "itel": "Itel",
+    "jio": "Jio",
+    "jiobharat": "Jio",
+    "nokia": "Nokia",
+    "hmd": "HMD",
+    "honor": "Honor",
+}
 
 CURL_BIN = shutil.which("curl") or "curl"
 COOKIE_FILE = Path(tempfile.gettempdir()) / "amazon_cookies.txt"
@@ -176,18 +217,81 @@ def fetch_seller_for_asin(asin: str) -> str:
         return "Amazon Verified Seller"
 
 
-def is_phone_accessory(title: str, price_num: Optional[float] = None) -> bool:
-    """Detect if listing is an accessory (cover, case, tempered glass, watch, speaker, pouch, holster) rather than a phone handset."""
-    if price_num is not None and price_num < 3500:
-        return True
+NON_PHONE_PATTERNS = [
+    # Musical Instruments & Audio Equipment (guitars, keyboards, drums, etc.)
+    r"\b(?:guitar|acoustic|semi-acoustic|cutaway|basswood|rosewood|fretboard|ukulele|violin|piano|harmonium|synthesizer|flute|drum|cymbal|amplifier|soundbar|home theatre)\b",
+    
+    # Audio Accessories & Wearables
+    r"\b(?:bluetooth speaker|tws|earbuds|earphones|headphone|headphones|neckband|microphone|mic)\b",
+    r"\b(?:smartwatch|smart watch|smart band|fitness tracker|fitness band|activity tracker)\b",
+    
+    # Large & Home Appliances
+    r"\b(?:television|smart tv|led tv|oled tv|refrigerator|fridge|washing machine|microwave|oven|air conditioner|cooler|fan|vacuum cleaner|water purifier|geyser)\b",
+    
+    # Computers, Laptops & Peripherals
+    r"\b(?:laptop|notebook|chromebook|macbook|desktop pc|all-in-one pc|monitor|motherboard|graphic card|graphics card|gpu|cpu processor|printer|scanner|mechanical keyboard)\b",
+    
+    # Cases, Covers, Glass & Protectors
+    r"\b(?:flip cover|back cover|case for|cover for|protective case|shockproof case|bumper case|leather case|silicone case|clear case|carbon case)\b",
+    r"\b(?:tempered glass|screen protector|camera lens protector|privacy glass|guard for|display glass)\b",
+    r"\b(?:compatible with|cover compatible|case compatible)\b",
+    
+    # Cables, Chargers & Power
+    r"\b(?:charging cable|charger cable|usb cable|type-c cable|lightning cable|adapter|charger adapter|power adapter|wall charger|car charger|wireless charger|docking station)\b",
+    r"\b(?:power bank|powerbank|battery pack)\b",
+    
+    # Mounts, Stands & Grips
+    r"\b(?:phone holder|mobile holder|car mount|bike mount|mobile stand|tripod|gimbal|selfie stick|ring light|ring holder|pop socket)\b",
+    
+    # Internal Spare Parts
+    r"\b(?:combo folder|display replacement|lcd screen replacement|touch screen digitizer|housing body|sim tray|flex cable|spare parts?)\b",
+    
+    # Pouches, Straps & Wraps
+    r"\b(?:holster|pouch|belt clip|sleeve bag|neck strap|lanyard|skin wrap|wrap skin|decal sticker)\b",
+]
+
+NON_PHONE_REGEX = re.compile("|".join(NON_PHONE_PATTERNS), re.IGNORECASE)
+
+POSITIVE_PHONE_PATTERNS = [
+    r"\b(?:smartphone|smartphones|mobile phone|mobile phones|basic mobile|feature phone|cellphone|handset|keypad phone|keypad mobile|keypad)\b",
+    r"\b(?:5g|4g|3g|volte|lte|dual sim)\b",
+    r"\b\d+\s*(?:gb|mb)\s*(?:ram|rom|storage)\b",
+    r"\b(?:snapdragon|dimensity|bionic|helio|unisoc|exynos|tensor)\b",
+    r"\b\d{4,5}\s*mah\b",
+    r"\b(?:iphone|galaxy|redmi|poco|realme|narzo|oneplus|iqoo|camon|pova|spark|agni|blaze|jiobharat)\b",
+]
+POSITIVE_PHONE_REGEX = re.compile("|".join(POSITIVE_PHONE_PATTERNS), re.IGNORECASE)
+
+
+def is_valid_phone_handset(title: str, price_num: Optional[float] = None) -> bool:
+    """Strictly validates whether a product listing is an authentic mobile phone handset."""
+    if not title:
+        return False
     t = title.lower().strip()
-    if re.search(r"\b(flip cover|back cover|case for|cover for|tempered glass|screen protector|smart watch|smartwatch|bluetooth speaker|protective case|skin for|charger cable|strap for|neckband|holster|pouch|belt clip)\b", t):
-        return True
-    if "compatible with" in t or "cover compatible" in t:
-        return True
-    if any(k in t for k in ("smart watch", "smartwatch", "bluetooth speaker", "earbuds", "neckband", "tempered glass", "holster", "pouch")):
-        return True
-    return False
+    
+    # 1. Reject if matches any non-phone category (guitars, tvs, appliances, covers, cables, smartwatches)
+    if NON_PHONE_REGEX.search(t):
+        return False
+        
+    # 2. Reject if price is below reasonable handset threshold (even budget feature phones are ₹800+)
+    if price_num is not None and price_num < 800:
+        return False
+        
+    # 3. Must match positive phone handset indicators
+    if not POSITIVE_PHONE_REGEX.search(t):
+        # Fallback check: check if it starts with known phone brand and has phone specs in title
+        for b in POPULAR_PHONE_BRANDS:
+            if re.search(rf"\b{re.escape(b.lower())}\b", t):
+                if re.search(r"\b(?:\d+\s*gb|\d+\s*inch|android|camera|display|black|blue|green|white|gold|silver|titanium)\b", t):
+                    return True
+        return False
+        
+    return True
+
+
+def is_phone_accessory(title: str, price_num: Optional[float] = None) -> bool:
+    """Detect if listing is an accessory or non-phone."""
+    return not is_valid_phone_handset(title, price_num)
 
 
 def extract_brand_and_specs(title: str) -> Dict[str, Any]:
@@ -203,10 +307,15 @@ def extract_brand_and_specs(title: str) -> Dict[str, Any]:
     elif "iphone" in title_lower or "apple" in title_lower:
         brand = "Apple"
     else:
-        for b in POPULAR_PHONE_BRANDS:
-            if re.search(rf"\b{re.escape(b.lower())}\b", title_lower):
-                brand = b
+        for alias, canon in BRAND_ALIASES.items():
+            if re.search(rf"\b{re.escape(alias)}\b", title_lower):
+                brand = canon
                 break
+        if not brand:
+            for b in POPULAR_PHONE_BRANDS:
+                if re.search(rf"\b{re.escape(b.lower())}\b", title_lower):
+                    brand = b
+                    break
 
     if not brand and title:
         first_token = title.split()[0]
@@ -330,10 +439,15 @@ def parse_natural_query(query: str) -> Dict[str, Any]:
         else:
             target_model = None
     else:
-        for b in POPULAR_PHONE_BRANDS:
-            if re.search(rf"\b{re.escape(b.lower())}\b", cleaned_lower):
-                target_brand = b
+        for alias, canon in BRAND_ALIASES.items():
+            if re.search(rf"\b{re.escape(alias)}\b", cleaned_lower):
+                target_brand = canon
                 break
+        if not target_brand:
+            for b in POPULAR_PHONE_BRANDS:
+                if re.search(rf"\b{re.escape(b.lower())}\b", cleaned_lower):
+                    target_brand = b
+                    break
 
     # Optimize search keyword for Amazon query
     if target_brand:
@@ -854,7 +968,11 @@ class AmazonScraper:
         if max_price is None and parsed.get("max_price") is not None:
             max_price = parsed["max_price"]
 
-        is_phone_query = target_brand is not None or any(k in query.lower() for k in ("phone", "mobile", "smartphone", "pulse"))
+        is_laptop_query = any(k in query.lower() for k in ("laptop", "notebook", "chromebook", "macbook"))
+        is_phone_query = not is_laptop_query and (
+            target_brand is not None
+            or any(k in query.lower() for k in ("phone", "phones", "mobile", "mobiles", "smartphone", "smartphones", "pulse", "handset", "5g", "keypad"))
+        )
 
         scan_urls = []
         brand_sweep_terms = {
@@ -866,6 +984,15 @@ class AmazonScraper:
             "realme": ("realme", "realme narzo", "realme phone", "realme phones", "realme mobile", "realme smartphones"),
             "motorola": ("moto", "motorola", "motorola phone", "motorola phones", "motorola mobile", "motorola smartphones"),
             "iqoo": ("iqoo", "iqoo phone", "iqoo phones", "iqoo mobile", "iqoo smartphones"),
+            "tecno": ("tecno", "techno", "tecno phone", "tecno phones", "tecno mobile", "tecno smartphones", "tecno spark", "tecno pova", "tecno camon", "tecno pop"),
+            "infinix": ("infinix", "infinix phone", "infinix phones", "infinix mobile", "infinix smartphones", "infinix gt", "infinix note", "infinix zero", "infinix smart"),
+            "itel": ("itel", "itel phone", "itel phones", "itel mobile", "itel smartphones"),
+            "lava": ("lava", "lava phone", "lava phones", "lava mobile", "lava smartphones", "lava agni", "lava blaze", "lava yuva"),
+            "nothing": ("nothing", "nothing phone", "nothing phones", "cmf", "cmf phone"),
+            "vivo": ("vivo", "vivo phone", "vivo phones", "vivo mobile", "vivo smartphones", "vivo v", "vivo t", "vivo y"),
+            "oppo": ("oppo", "oppo phone", "oppo phones", "oppo mobile", "oppo smartphones", "oppo reno", "oppo f"),
+            "google": ("google", "pixel", "google pixel", "google phone", "google phones"),
+            "nokia": ("nokia", "hmd", "nokia phone", "nokia phones", "nokia mobile", "nokia 105", "nokia g42"),
         }
         b_key = target_brand.lower() if target_brand else ""
         valid_sweep_queries = brand_sweep_terms.get(b_key, (
