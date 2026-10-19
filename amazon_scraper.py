@@ -322,8 +322,13 @@ def parse_natural_query(query: str) -> Dict[str, Any]:
             target_model = "pulse"
     elif "iphone" in cleaned_lower or "apple" in cleaned_lower:
         target_brand = "Apple"
-        if "iphone" in cleaned_lower:
-            target_model = "iphone"
+        # Only set target_model if a specific series/version is specified (e.g. "16", "15", "14", "13", "12", "11", "se", "pro", "max")
+        # Do NOT set target_model to "iphone" because "iphone" is the generic line, not a sub-model!
+        model_match = re.search(r"\b(16\s*(?:pro(?:\s*max)?|plus)?|15\s*(?:pro(?:\s*max)?|plus)?|14\s*(?:pro(?:\s*max)?|plus)?|13(?:\s*mini|\s*pro)?|12(?:\s*mini|\s*pro)?|11(?:\s*pro)?|se|air)\b", cleaned_lower)
+        if model_match:
+            target_model = model_match.group(1).strip()
+        else:
+            target_model = None
     else:
         for b in POPULAR_PHONE_BRANDS:
             if re.search(rf"\b{re.escape(b.lower())}\b", cleaned_lower):
@@ -734,8 +739,12 @@ class AmazonScraper:
             if not brand_match:
                 return None
 
-            if target_model and target_model.lower() not in title_l:
-                return None
+            if target_model:
+                if target_brand == "Apple" and target_model.isdigit():
+                    if not re.search(rf"\biphone\s*{target_model}\b", title_l):
+                        return None
+                elif not re.search(rf"\b{re.escape(target_model.lower())}\b", title_l):
+                    return None
 
         # Stock check
         card_text = item.get_text().lower()
@@ -848,9 +857,41 @@ class AmazonScraper:
         is_phone_query = target_brand is not None or any(k in query.lower() for k in ("phone", "mobile", "smartphone", "pulse"))
 
         scan_urls = []
-        is_generic_brand_search = target_brand and query.strip().lower() in (target_brand.lower(), f"{target_brand.lower()} phone", f"{target_brand.lower()} phones", f"{target_brand.lower()} mobile", f"{target_brand.lower()} smartphones")
+        brand_sweep_terms = {
+            "apple": ("apple", "iphone", "apple iphone", "apple iphones", "iphones", "apple phone", "apple phones", "apple mobile", "apple smartphones"),
+            "poco": ("poco", "poco phone", "poco phones", "poco mobile", "poco smartphones", "poco 5g"),
+            "samsung": ("samsung", "samsung galaxy", "samsung phone", "samsung phones", "samsung mobile", "samsung smartphones"),
+            "oneplus": ("oneplus", "oneplus nord", "oneplus phone", "oneplus phones", "oneplus mobile", "oneplus smartphones"),
+            "redmi": ("redmi", "redmi note", "redmi phone", "redmi phones", "redmi mobile", "redmi smartphones", "xiaomi"),
+            "realme": ("realme", "realme narzo", "realme phone", "realme phones", "realme mobile", "realme smartphones"),
+            "motorola": ("moto", "motorola", "motorola phone", "motorola phones", "motorola mobile", "motorola smartphones"),
+            "iqoo": ("iqoo", "iqoo phone", "iqoo phones", "iqoo mobile", "iqoo smartphones"),
+        }
+        b_key = target_brand.lower() if target_brand else ""
+        valid_sweep_queries = brand_sweep_terms.get(b_key, (
+            b_key,
+            f"{b_key} phone",
+            f"{b_key} phones",
+            f"{b_key} mobile",
+            f"{b_key} smartphones"
+        )) if b_key else ()
 
-        if is_generic_brand_search and target_brand == "Poco":
+        is_generic_brand_search = bool(
+            b_key and (
+                query.strip().lower() in valid_sweep_queries
+                or (target_model is None and query.strip().lower().replace("+", " ") in valid_sweep_queries)
+            )
+        )
+
+        if is_generic_brand_search and target_brand == "Apple":
+            # Deep Apple iPhone catalog scan across 10 pages + all model generations in Smartphones category node 1389401031
+            for p in range(1, 11):
+                scan_urls.append(f"{self.domain}/s?k=apple+iphone&rh=n%3A1389401031&page={p}")
+                scan_urls.append(f"{self.domain}/s?k=iphone&rh=n%3A1389401031&page={p}")
+            for s in ["iphone+16", "iphone+15", "iphone+14", "iphone+13", "iphone+16+pro", "iphone+15+pro", "iphone+plus", "iphone+se", "iphone+12", "iphone+11"]:
+                for p in range(1, 3):
+                    scan_urls.append(f"{self.domain}/s?k={s}&rh=n%3A1389401031&page={p}")
+        elif is_generic_brand_search and target_brand == "Poco":
             # Full brand catalog scan across all 15 pages in Smartphones category node 1389401031
             for p in range(1, 16):
                 scan_urls.append(f"{self.domain}/s?k=poco&rh=n%3A1389401031&page={p}")
@@ -876,6 +917,8 @@ class AmazonScraper:
             for a in angles:
                 for p in range(1, max(max_pages, 3) + 1):
                     params = [f"k={a.replace(' ', '+')}", f"page={p}"]
+                    if is_phone_query:
+                        params.append("rh=n%3A1389401031")
                     if min_price:
                         params.append(f"low-price={int(min_price)}")
                     if max_price:
@@ -1227,7 +1270,10 @@ class AmazonScraper:
                             continue
 
                         if target_model:
-                            if target_model.lower() not in title_l:
+                            if target_brand == "Apple" and target_model.isdigit():
+                                if not re.search(rf"\biphone\s*{target_model}\b", title_l):
+                                    continue
+                            elif not re.search(rf"\b{re.escape(target_model.lower())}\b", title_l):
                                 continue
 
                     # Stock & Availability Detection
