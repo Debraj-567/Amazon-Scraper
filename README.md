@@ -4,7 +4,7 @@ A robust, stealth Amazon product metadata and pricing scraper built with **Pytho
 
 ---
 
-## ✨ Features
+##  Features
 
 - **Interactive Web Dashboard**: Modern cyber-dark glassmorphism web UI with real-time scraping, live progress bar, metrics cards, grid/table views, and 1-click CSV/JSON export.
 - **Natural Language Budget Intelligence**: Type queries like `"phones under 25k"`, `"laptops below 50000"`, or `"earbuds between 1k and 3k"`—the engine automatically extracts the budget and configures both Amazon search filters and client-side validation.
@@ -30,7 +30,7 @@ A robust, stealth Amazon product metadata and pricing scraper built with **Pytho
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Interactive Mode (Menu-driven)
 Run the script without arguments to open the interactive console menu:
@@ -80,7 +80,7 @@ Menu options:
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```text
 Amazon/
