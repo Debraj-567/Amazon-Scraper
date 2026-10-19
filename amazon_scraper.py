@@ -217,81 +217,112 @@ def fetch_seller_for_asin(asin: str) -> str:
         return "Amazon Verified Seller"
 
 
+MIN_PHONE_PRICE_BY_BRAND = {
+    "Apple": 20000,
+    "OnePlus": 12000,
+    "iQOO": 8000,
+    "Google": 18000,
+    "Pixel": 18000,
+    "Nothing": 14000,
+    "CMF": 10000,
+    "Samsung": 5500,
+    "Xiaomi": 5500,
+    "Redmi": 5000,
+    "Realme": 5000,
+    "Poco": 5000,
+    "Motorola": 5500,
+    "Vivo": 5500,
+    "Oppo": 5500,
+    "Honor": 8000,
+    "Tecno": 5000,
+    "Infinix": 5000,
+    "AI+": 3500,
+    "Lava": 800,
+    "Itel": 800,
+    "Nokia": 800,
+    "HMD": 800,
+    "Jio": 800,
+    "Micromax": 800,
+    "IKALL": 800,
+}
+
 NON_PHONE_PATTERNS = [
-    # Musical Instruments & Audio Equipment (guitars, keyboards, drums, etc.)
-    r"\b(?:guitar|acoustic|semi-acoustic|cutaway|basswood|rosewood|fretboard|ukulele|violin|piano|harmonium|synthesizer|flute|drum|cymbal|amplifier|soundbar|home theatre)\b",
+    # Watches & Wearables ("ghadi") - ABSOLUTE REJECT
+    r"\b(?:watch|smartwatch|smart watch|wrist watch|analog watch|digital watch|watch for|smart band|fitness band|activity tracker)\b",
     
-    # Audio Accessories & Wearables
-    r"\b(?:bluetooth speaker|tws|earbuds|earphones|headphone|headphones|neckband|microphone|mic)\b",
-    r"\b(?:smartwatch|smart watch|smart band|fitness tracker|fitness band|activity tracker)\b",
+    # Phone Cases, Covers, Holsters & Panels - ABSOLUTE REJECT
+    r"\b(?:cover|covers|case|cases|flip cover|back cover|flip case|back case|protective case|shockproof case|bumper case|leather case|silicone case|clear case|carbon case|phone cover|phone case|back panel|panel replacement|housing body|pouch|holster|sleeve bag)\b",
     
-    # Large & Home Appliances
-    r"\b(?:television|smart tv|led tv|oled tv|refrigerator|fridge|washing machine|microwave|oven|air conditioner|cooler|fan|vacuum cleaner|water purifier|geyser)\b",
-    
-    # Computers, Laptops & Peripherals
-    r"\b(?:laptop|notebook|chromebook|macbook|desktop pc|all-in-one pc|monitor|motherboard|graphic card|graphics card|gpu|cpu processor|printer|scanner|mechanical keyboard)\b",
-    
-    # Cases, Covers, Glass & Protectors
-    r"\b(?:flip cover|back cover|case for|cover for|protective case|shockproof case|bumper case|leather case|silicone case|clear case|carbon case)\b",
-    r"\b(?:tempered glass|screen protector|camera lens protector|privacy glass|guard for|display glass)\b",
+    # Glass & Screen Protectors - ABSOLUTE REJECT
+    r"\b(?:tempered glass|screen protector|camera lens protector|privacy glass|guard for|display glass|front glass replacement)\b",
     r"\b(?:compatible with|cover compatible|case compatible)\b",
     
-    # Cables, Chargers & Power
-    r"\b(?:charging cable|charger cable|usb cable|type-c cable|lightning cable|adapter|charger adapter|power adapter|wall charger|car charger|wireless charger|docking station)\b",
-    r"\b(?:power bank|powerbank|battery pack)\b",
+    # Replacement Parts & Batteries - ABSOLUTE REJECT
+    r"\b(?:replacement|spare parts?|replacement battery|mobile battery|li-ion battery|internal battery|battery for|combo folder|display replacement|lcd screen replacement|touch screen digitizer|sim tray|flex cable)\b",
     
-    # Mounts, Stands & Grips
-    r"\b(?:phone holder|mobile holder|car mount|bike mount|mobile stand|tripod|gimbal|selfie stick|ring light|ring holder|pop socket)\b",
+    # Cables & Chargers - ABSOLUTE REJECT
+    r"\b(?:charging cable|charger cable|usb cable|type-c cable|lightning cable|adapter|charger adapter|power adapter|wall charger|car charger|wireless charger|docking station|power bank|powerbank)\b",
     
-    # Internal Spare Parts
-    r"\b(?:combo folder|display replacement|lcd screen replacement|touch screen digitizer|housing body|sim tray|flex cable|spare parts?)\b",
+    # Audio Accessories - ABSOLUTE REJECT
+    r"\b(?:bluetooth speaker|speaker|soundbar|tws|earbuds|earphones|headphone|headphones|neckband|microphone|mic)\b",
     
-    # Pouches, Straps & Wraps
-    r"\b(?:holster|pouch|belt clip|sleeve bag|neck strap|lanyard|skin wrap|wrap skin|decal sticker)\b",
+    # Mounts, Stands & Skins
+    r"\b(?:phone holder|mobile holder|car mount|bike mount|mobile stand|tripod|gimbal|selfie stick|ring light|ring holder|pop socket|skin wrap|wrap skin|decal sticker)\b",
+    
+    # Musical Instruments
+    r"\b(?:guitar|acoustic|semi-acoustic|cutaway|basswood|rosewood|ukulele|violin|piano|harmonium|synthesizer|flute|drum|amplifier)\b",
+    
+    # Appliances & TVs
+    r"\b(?:television|smart tv|led tv|oled tv|refrigerator|fridge|washing machine|microwave|oven|air conditioner|cooler|fan|vacuum cleaner|water purifier|geyser)\b",
+    
+    # Laptops & PC Parts
+    r"\b(?:laptop|notebook|chromebook|macbook|desktop pc|monitor|motherboard|graphic card|graphics card|gpu|cpu processor|printer|scanner|mechanical keyboard)\b",
 ]
 
 NON_PHONE_REGEX = re.compile("|".join(NON_PHONE_PATTERNS), re.IGNORECASE)
 
 POSITIVE_PHONE_PATTERNS = [
     r"\b(?:smartphone|smartphones|mobile phone|mobile phones|basic mobile|feature phone|cellphone|handset|keypad phone|keypad mobile|keypad)\b",
-    r"\b(?:5g|4g|3g|volte|lte|dual sim)\b",
+    r"\b(?:5g|4g volte|4g lte|dual sim)\b",
     r"\b\d+\s*(?:gb|mb)\s*(?:ram|rom|storage)\b",
     r"\b(?:snapdragon|dimensity|bionic|helio|unisoc|exynos|tensor)\b",
-    r"\b\d{4,5}\s*mah\b",
-    r"\b(?:iphone|galaxy|redmi|poco|realme|narzo|oneplus|iqoo|camon|pova|spark|agni|blaze|jiobharat)\b",
 ]
 POSITIVE_PHONE_REGEX = re.compile("|".join(POSITIVE_PHONE_PATTERNS), re.IGNORECASE)
 
 
-def is_valid_phone_handset(title: str, price_num: Optional[float] = None) -> bool:
+def is_valid_phone_handset(title: str, price_num: Optional[float] = None, target_brand: Optional[str] = None) -> bool:
     """Strictly validates whether a product listing is an authentic mobile phone handset."""
     if not title:
         return False
     t = title.lower().strip()
     
-    # 1. Reject if matches any non-phone category (guitars, tvs, appliances, covers, cables, smartwatches)
+    # 1. Reject if matches any non-phone category (watches, covers, cases, panels, batteries, cables, etc.)
     if NON_PHONE_REGEX.search(t):
         return False
         
-    # 2. Reject if price is below reasonable handset threshold (even budget feature phones are ₹800+)
-    if price_num is not None and price_num < 800:
+    # 2. Reject if price is below brand-specific handset minimum threshold
+    if target_brand:
+        min_allowed = MIN_PHONE_PRICE_BY_BRAND.get(target_brand, 800)
+        if price_num is not None and price_num < min_allowed:
+            return False
+    elif price_num is not None and price_num < 800:
         return False
         
-    # 3. Must match positive phone handset indicators
-    if not POSITIVE_PHONE_REGEX.search(t):
-        # Fallback check: check if it starts with known phone brand and has phone specs in title
-        for b in POPULAR_PHONE_BRANDS:
-            if re.search(rf"\b{re.escape(b.lower())}\b", t):
-                if re.search(r"\b(?:\d+\s*gb|\d+\s*inch|android|camera|display|black|blue|green|white|gold|silver|titanium)\b", t):
-                    return True
-        return False
+    # 3. Must match positive phone handset indicators (unless brand is known phone brand with specs)
+    if POSITIVE_PHONE_REGEX.search(t):
+        return True
         
-    return True
+    for b in POPULAR_PHONE_BRANDS:
+        if re.search(rf"\b{re.escape(b.lower())}\b", t):
+            if re.search(r"\b(?:\d+\s*gb|\d+\s*inch|android|camera|display|titanium)\b", t):
+                return True
+                
+    return False
 
 
-def is_phone_accessory(title: str, price_num: Optional[float] = None) -> bool:
+def is_phone_accessory(title: str, price_num: Optional[float] = None, target_brand: Optional[str] = None) -> bool:
     """Detect if listing is an accessory or non-phone."""
-    return not is_valid_phone_handset(title, price_num)
+    return not is_valid_phone_handset(title, price_num, target_brand)
 
 
 def extract_brand_and_specs(title: str) -> Dict[str, Any]:
@@ -829,7 +860,7 @@ class AmazonScraper:
         mrp_num = parse_price(mrp_text)
 
         # Accessory check
-        if is_phone_query and is_phone_accessory(title, price_num):
+        if is_phone_query and is_phone_accessory(title, price_num, target_brand):
             return None
 
         # Brand validation
@@ -1371,7 +1402,7 @@ class AmazonScraper:
                     mrp_num = parse_price(mrp_text)
 
                     # Strictly filter out accessories (covers, cases, tempered glass, smart watches, speakers) for phone queries
-                    if is_phone_query and is_phone_accessory(title, price_num):
+                    if is_phone_query and is_phone_accessory(title, price_num, target_brand):
                         continue
 
                     # Extract Brand and Tech Specifications early
