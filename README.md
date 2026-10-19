@@ -1,3 +1,13 @@
+---
+title: Amazon Pro Scraper
+emoji: 🛒
+colorFrom: yellow
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Amazon Product & Price Scraper
 
 A robust, stealth Amazon product metadata and pricing scraper built with **Python**, **Selenium**, and **BeautifulSoup**, designed to mirror the architecture and anti-detection capabilities of your **Flip-Kart** automation tool.
