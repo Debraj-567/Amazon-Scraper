@@ -8,3 +8,6 @@ scratch_*.py
 test_*.py
 debug_*.py
 .system_generated/
+cloudflared.exe
+*.exe
+
