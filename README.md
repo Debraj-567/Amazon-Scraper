@@ -96,7 +96,7 @@ Amazon/
 
 ---
 
-## ⚙️ Configuration (`scraper_config.json`)
+##  Configuration (`scraper_config.json`)
 
 You can customize:
 - `domain`: Default `https://www.amazon.in` (can be changed to `https://www.amazon.com`).
