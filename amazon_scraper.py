@@ -122,7 +122,98 @@ BRAND_ALIASES = {
     "nokia": "Nokia",
     "hmd": "HMD",
     "honor": "Honor",
+    "nord": "OnePlus",
+    "ai pulse": "AI+",
+    "pulse 2": "AI+",
+    "ai+": "AI+",
 }
+
+MODEL_PREFIX_BRANDS = {
+    r"\b(?:s\d{2}|m\d{2}|a\d{2}|f\d{2}|z\s*fold|z\s*flip)\b": "Samsung",
+    r"\bnord\b": "OnePlus",
+    r"\bnarzo\b": "Realme",
+    r"\bredmi\b": "Redmi",
+    r"\bpoco\b": "Poco",
+    r"\biphone\b": "Apple",
+    r"\bpixel\b": "Google",
+}
+
+GENERIC_PHONE_KEYWORDS = {
+    "phone", "phones", "mobile", "mobiles", "smartphone", "smartphones",
+    "5g", "4g", "volte", "lte", "handset", "device", "best", "new", "latest",
+    "in", "stock", "all", "buy", "online", "amazon", "price", "only", "verified",
+}
+
+
+def normalize_text_for_model(text: str) -> str:
+    """Normalize text for model matching: replace + with plus, strip punctuation."""
+    t = text.lower().replace("+", " plus ")
+    t = re.sub(r"[\-_/(),:;]", " ", t)
+    return " " + re.sub(r"\s+", " ", t).strip() + " "
+
+
+def matches_exact_model(title: str, target_model: str) -> bool:
+    """
+    Strictly verifies that a product title corresponds to the exact target model requested,
+    while permitting all variant configurations (different sellers, RAM/ROM sizes, colors).
+    Rejects competing / adjacent sub-models (e.g. searching '12' rejects '12R'; searching '15'
+    rejects '15 Pro' or '15 Plus'; searching 'X6' rejects 'X6 Neo' or 'X6 Pro').
+    """
+    if not title or not target_model:
+        return True
+
+    t = normalize_text_for_model(title)
+    m_raw = normalize_text_for_model(target_model).strip()
+
+    has_pro_max = bool(re.search(r"\bpro\s+max\b", m_raw))
+    has_pro = bool(re.search(r"\bpro\b", m_raw)) and not has_pro_max
+    has_max = bool(re.search(r"\bmax\b", m_raw)) and not has_pro_max
+    has_ultra = bool(re.search(r"\bultra\b", m_raw))
+    has_plus = bool(re.search(r"\bplus\b", m_raw))
+    has_neo = bool(re.search(r"\bneo\b", m_raw))
+    has_fe = bool(re.search(r"\bfe\b", m_raw))
+    has_lite = bool(re.search(r"\blite\b", m_raw))
+    has_ce = bool(re.search(r"\bce\b", m_raw))
+    has_r = bool(re.search(r"\b\d+r\b", m_raw) or re.search(r"\br\b", m_raw))
+    has_mini = bool(re.search(r"\bmini\b", m_raw))
+
+    # All tokens of target model must be present as whole words
+    m_tokens = m_raw.split()
+    for tok in m_tokens:
+        if not re.search(rf"\b{re.escape(tok)}\b", t):
+            return False
+
+    # Check for unwanted modifier / sub-model additions in product title
+    if not has_pro_max and re.search(r"\bpro\s+max\b", t):
+        return False
+    if not (has_pro or has_pro_max) and re.search(r"\bpro\b", t):
+        return False
+    if not (has_max or has_pro_max) and re.search(r"\bmax\b", t):
+        return False
+    if not has_ultra and re.search(r"\bultra\b", t):
+        return False
+    if not has_plus and re.search(r"\bplus\b", t):
+        return False
+    if not has_neo and re.search(r"\bneo\b", t):
+        return False
+    if not has_fe and re.search(r"\bfe\b", t):
+        return False
+    if not has_lite and re.search(r"\blite\b", t):
+        return False
+    if not has_ce and re.search(r"\bce\b", t):
+        return False
+    if not has_mini and re.search(r"\bmini\b", t):
+        return False
+
+    # Check attached 'r', e.g. title has '12r' or '11r' when user searched '12' or '11'
+    if not has_r:
+        num_match = re.search(r"\b(\d+)\b", m_raw)
+        if num_match:
+            num = num_match.group(1)
+            if re.search(rf"\b{num}r\b", t) or re.search(rf"\b{num}\s+r\b", t):
+                return False
+
+    return True
 
 CURL_BIN = shutil.which("curl") or "curl"
 COOKIE_FILE = Path(tempfile.gettempdir()) / "amazon_cookies.txt"
@@ -456,19 +547,13 @@ def parse_natural_query(query: str) -> Dict[str, Any]:
     target_model = None
     cleaned_lower = cleaned.lower()
 
-    if "pulse" in cleaned_lower or "ai+" in cleaned_lower or "ai pulse" in cleaned_lower or "ai plus" in cleaned_lower:
+    # 1. Detect Brand
+    if "pulse" in cleaned_lower or "ai+" in cleaned_lower or "ai pulse" in cleaned_lower or "ai plus" in cleaned_lower or "nova 5g" in cleaned_lower:
         target_brand = "AI+"
-        if "pulse" in cleaned_lower:
-            target_model = "pulse"
     elif "iphone" in cleaned_lower or "apple" in cleaned_lower:
         target_brand = "Apple"
-        # Only set target_model if a specific series/version is specified (e.g. "16", "15", "14", "13", "12", "11", "se", "pro", "max")
-        # Do NOT set target_model to "iphone" because "iphone" is the generic line, not a sub-model!
-        model_match = re.search(r"\b(16\s*(?:pro(?:\s*max)?|plus)?|15\s*(?:pro(?:\s*max)?|plus)?|14\s*(?:pro(?:\s*max)?|plus)?|13(?:\s*mini|\s*pro)?|12(?:\s*mini|\s*pro)?|11(?:\s*pro)?|se|air)\b", cleaned_lower)
-        if model_match:
-            target_model = model_match.group(1).strip()
-        else:
-            target_model = None
+    elif "galaxy" in cleaned_lower:
+        target_brand = "Samsung"
     else:
         for alias, canon in BRAND_ALIASES.items():
             if re.search(rf"\b{re.escape(alias)}\b", cleaned_lower):
@@ -479,19 +564,38 @@ def parse_natural_query(query: str) -> Dict[str, Any]:
                 if re.search(rf"\b{re.escape(b.lower())}\b", cleaned_lower):
                     target_brand = b
                     break
+        if not target_brand:
+            for pat, b in MODEL_PREFIX_BRANDS.items():
+                if re.search(pat, cleaned_lower):
+                    target_brand = b
+                    break
+
+    # 2. Extract specific model name/tokens if user searched a specific model
+    cleaned_for_model = re.sub(r"\b\d+\s*(?:gb|tb|mb)(?:\s*(?:ram|rom|storage))?\b", " ", cleaned, flags=re.I)
+    if target_brand:
+        brand_tokens = [target_brand.lower()]
+        for alias, canon in BRAND_ALIASES.items():
+            if canon.lower() == target_brand.lower():
+                brand_tokens.append(alias.lower())
+        for bt in brand_tokens:
+            cleaned_for_model = re.sub(rf"\b{re.escape(bt)}\b", " ", cleaned_for_model, flags=re.I)
+
+    words = cleaned_for_model.split()
+    model_words = [w for w in words if w.lower() not in GENERIC_PHONE_KEYWORDS]
+    if model_words:
+        target_model = " ".join(model_words).strip(" -_/")
+    else:
+        target_model = None
 
     # Optimize search keyword for Amazon query
-    if target_brand:
-        # If user typed just the brand name (e.g. "Samsung" or "OnePlus"), append "smartphones"
-        # so Amazon doesn't return refrigerators, microwaves, or monitors
-        words_without_terms = [
-            w for w in cleaned.split()
-            if w.lower() not in ("phone", "phones", "mobile", "mobiles", "smartphone", "smartphones", "smart", "device")
-        ]
-        if not words_without_terms or (len(words_without_terms) == 1 and words_without_terms[0].lower() == target_brand.lower()):
-            search_keyword = f"{target_brand} smartphones"
+    if target_brand and target_model:
+        if target_brand == "Apple" and ("iphone" not in target_model.lower()):
+            search_keyword = f"iPhone {target_model}"
         else:
-            search_keyword = cleaned
+            search_keyword = f"{target_brand} {target_model}"
+    elif target_brand:
+        # If user typed just the brand name (e.g. "Samsung" or "OnePlus"), append "smartphones"
+        search_keyword = f"{target_brand} smartphones"
     else:
         if cleaned_lower in ("phones", "phone", "mobile", "mobiles"):
             search_keyword = "smartphones"
@@ -515,10 +619,10 @@ class AmazonScraper:
     def __init__(self, driver: Optional[webdriver.Chrome] = None, config: Optional[Dict[str, Any]] = None):
         self.driver = driver
         self.config = config or {}
-        self.domain = config.get("domain", "https://www.amazon.in").rstrip("/")
-        self.delay_min = config.get("delay_range_seconds", [2.0, 4.0])[0]
-        self.delay_max = config.get("delay_range_seconds", [2.0, 4.0])[1]
-        self.timeout = config.get("page_load_timeout", 30)
+        self.domain = self.config.get("domain", "https://www.amazon.in").rstrip("/")
+        self.delay_min = self.config.get("delay_range_seconds", [2.0, 4.0])[0]
+        self.delay_max = self.config.get("delay_range_seconds", [2.0, 4.0])[1]
+        self.timeout = self.config.get("page_load_timeout", 30)
 
     def random_sleep(self) -> None:
         """Introduce polite random delay between requests."""
@@ -885,10 +989,7 @@ class AmazonScraper:
                 return None
 
             if target_model:
-                if target_brand == "Apple" and target_model.isdigit():
-                    if not re.search(rf"\biphone\s*{target_model}\b", title_l):
-                        return None
-                elif not re.search(rf"\b{re.escape(target_model.lower())}\b", title_l):
+                if not matches_exact_model(title, target_model):
                     return None
 
         # Stock check
@@ -1072,8 +1173,9 @@ class AmazonScraper:
             angles = [actual_keyword]
             if deep_scan and is_phone_query and not any(k in actual_keyword.lower() for k in ("phone", "mobile", "smartphone")):
                 angles.append(f"{actual_keyword} 5g mobile")
+            target_depth = max(max_pages, 5) if target_model else max(max_pages, 3)
             for a in angles:
-                for p in range(1, max(max_pages, 3) + 1):
+                for p in range(1, target_depth + 1):
                     params = [f"k={a.replace(' ', '+')}", f"page={p}"]
                     if is_phone_query:
                         params.append("rh=n%3A1389401031")
@@ -1169,7 +1271,7 @@ class AmazonScraper:
         logger.info(f"⚡ Turbo Search finished in {elapsed_search:.2f}s! Found {len(results)} items.")
 
         if results:
-            missing_sellers = [r for r in results if not r.get("seller") or r.get("seller") == "Amazon Verified"][:15]
+            missing_sellers = [r for r in results if not r.get("seller") or r.get("seller") == "Amazon Verified"][:30]
             if missing_sellers:
                 if progress_callback:
                     progress_callback({
@@ -1441,10 +1543,7 @@ class AmazonScraper:
                             continue
 
                         if target_model:
-                            if target_brand == "Apple" and target_model.isdigit():
-                                if not re.search(rf"\biphone\s*{target_model}\b", title_l):
-                                    continue
-                            elif not re.search(rf"\b{re.escape(target_model.lower())}\b", title_l):
+                            if not matches_exact_model(title, target_model):
                                 continue
 
                     # Stock & Availability Detection
